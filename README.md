@@ -35,6 +35,4 @@ python preprocess_tokens.py small_parallel_enja/train.en data/en_dataset.pickle 
 ```
 
 ### Check DataLoader
-For usage, please see [example.ipynb]()
-In this repository, [small_parallel_enja](https://github.com/odashi/small_parallel_enja) is used in [example.ipynb](https://github.com/matasukef/chainer-seq2seq-dataloader/example.ipynb)
-```
+For usage, please see [example.ipynb](https://github.com/matasukef/chainer-seq2seq-dataloader/example.ipynb)
