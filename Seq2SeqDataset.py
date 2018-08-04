@@ -1,3 +1,4 @@
+import sys
 import json
 import pickle
 from pathlib import Path
@@ -12,35 +13,56 @@ class Seq2SeqDatasetBase(chainer.dataset.DatasetMixin):
             self,
             source_sentence_path,
             target_sentence_path,
-            n_source_min_tokens,
-            n_source_max_tokens,
-            n_target_min_tokens,
-            n_target_max_tokens,
+            source_vocab_path,
+            target_vocab_path,
+            n_source_min_tokens=1,
+            n_source_max_tokens=50,
+            n_target_min_tokens=1,
+            n_target_max_tokens=50,
     ):
 
-        # TODO: chenge it to use p.open() and exception
+        try:
+            if Path(source_sentence_path).exists() \
+                    and Path(target_sentence_path).exists():
+                source_data = self.load_data(source_sentence_path)
+                target_data = self.load_data(target_sentence_path)
+                assert len(source_data) == len(target_data)
+            else:
+                if not Path(source_sentence_path).exists():
+                    msg = "File %s is not found." % source_sentence_path
+                    FileNotFoundError(msg)
+                elif not Path(target_sentence_path).exists():
+                    msg = "File %s is not found." % target_sentence_path
+                    FileNotFoundError(msg)
 
-        if Path(source_sentence_path).exists() \
-                and Path(target_sentence_path).exists():
-            source_data = self.load_data(source_sentence_path)
-            target_data = self.load_data(target_sentence_path)
-            assert len(source_data['sentences']) == len(target_data['sentences'])
+            if Path(source_vocab_path).exists():
+                self.source_word_ids = self.load_data(source_vocab_path)
+            else:
+                msg = "File %s is not found." % source_vocab_path
+                FileNotFoundError(msg)
+            if Path(target_vocab_path).exists():
+                self.target_word_ids = self.load_data(target_vocab_path)
+            else:
+                msg = "File %s is not found." % target_vocab_path
+                FileNotFoundError(msg)
+
+        except Exception as ex:
+            print(ex, file=sys.stderr)
+            sys.exit()
 
         self.pairs = [
-            (np.array(s['encoded_tokens'], np.int32),
-             np.array(t['encoded_tokens'], np.int32))
-            for s, t in zip(source_data['sentences'], target_data['sentences'])
-            if n_source_min_tokens <= len(s['encoded_tokens']) <= n_source_max_tokens and
-            n_target_min_tokens <= len(t['encoded_tokens']) <= n_target_max_tokens
+            (np.array(s['tokens'], np.int32),
+             np.array(t['tokens'], np.int32))
+            for s, t in zip(source_data, target_data)
+            if n_source_min_tokens <= len(s['tokens']) <= n_source_max_tokens and
+            n_target_min_tokens <= len(t['tokens']) <= n_target_max_tokens
         ]
 
-        self.source_word_ids = source_data['word_ids']
-        self.target_word_ids = target_data['word_ids']
         self.inv_source_word_ids = {
-            v: k for k, v in source_data['word_ids'].items()
+            v: k for k, v in self.source_word_ids.items()
         }
         self.inv_target_word_ids = {
-            v: k for k, v in target_data['word_ids'].items()
+            v: k for k, v in self.target_word_ids.items()
         }
 
     def __len__(self):
@@ -50,7 +72,7 @@ class Seq2SeqDatasetBase(chainer.dataset.DatasetMixin):
     def load_data(path):
         in_path = Path(path)
         ext = in_path.suffix
-        if ext == '.pickle':
+        if ext == '.pkl':
             with in_path.open('rb') as f:
                 data = pickle.load(f)
         elif ext == '.json':
